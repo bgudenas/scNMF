@@ -63,6 +63,10 @@ NMF_consensus = function(seurat_obj, meta_list, cell_samples, cell_subgroups){
       names(samp_nmf_comps) = paste0(sample_name, "_", 1:length(samp_nmf_comps ))
       GO = c(GO, samp_nmf_comps)
     }
+    if  ( all(is.na(unlist(subgroup_genesets))) ) { ##if no metagenes were found -- skip
+     print(paste0( i," -- No genesets found" ))
+      next
+    }
 # Score cells within each subgroup for metagenes --------------------------
     df = as.matrix(seurat_obj@assays$RNA@data[ ,cell_subgroups == i ]  )
     ssGSEA = gsva(df, gset.idx.list = GO, method="plage", min.sz=8, max.sz=300)
@@ -153,9 +157,9 @@ return(final_metagenes)
 #                         genes = genes, 
 #                         cell_samples = cell_samples, 
 #                         nrun = 2, k = 4)
-# 
-# metagenes = NMF_consensus(seurat_obj = seurat_obj,
-#                           meta_list = meta_list,
-#                           cell_samples = cell_samples, 
-#                           cell_subgroups = cell_subgroups)
+# meta_list = readRDS("./")
+metagenes = NMF_consensus(seurat_obj = seurat_obj,
+                          meta_list = meta_list,
+                          cell_samples = cell_samples,
+                          cell_subgroups = cell_subgroups)
 #
