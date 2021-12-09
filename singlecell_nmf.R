@@ -158,8 +158,8 @@ return(final_metagenes)
 #                         cell_samples = cell_samples, 
 #                         nrun = 2, k = 4)
 # meta_list = readRDS("./")
-metagenes = NMF_consensus(seurat_obj = seurat_obj,
-                          meta_list = meta_list,
-                          cell_samples = cell_samples,
-                          cell_subgroups = cell_subgroups)
+#metagenes = NMF_consensus(seurat_obj = seurat_obj,
+#                          meta_list = meta_list,
+#                          cell_samples = cell_samples,
+#                          cell_subgroups = cell_subgroups)
 #
