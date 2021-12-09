@@ -1,10 +1,11 @@
 ## Author: Brian Gudenas
 ## Goal: Function to annotate NMF meta-programs
 ## Logic: Perform hyper-geometric test to functionally annotate NMF metaprograms
-metagenes = readRDS("./test_data/metagenes_testdata.rds")
+#metagenes = readRDS("./test_data/metagenes_testdata.rds")
 
 annotate_metagenes = function(metagenes, bp_db=  "GO_Biological_Process_2021"){
 library(enrichR)
+library(stringr)
 setEnrichrSite("Enrichr") # Human genes
 dbs <- listEnrichrDbs()
 websiteLive <- TRUE
@@ -30,9 +31,10 @@ meta_functions$Subgroup =  as.character(unlist(lapply(str_split(meta_functions$m
 return(meta_functions)
 }
 
-meta_functions = annotate_metagenes(metagenes)
+#meta_functions = annotate_metagenes(metagenes)
 
-plot_metagenes = function(meta_functions){
+plot_metagenes = function(meta_functions, plot_dir="./Figures/"){
+  dir.create(plot_dir, showWarnings = FALSE)
  library(ggplot2)
   th <- theme(text = element_text(size=12, family = "Helvetica" ), panel.grid.major = element_blank(), panel.grid.minor = element_blank() )
   df  = meta_functions
@@ -40,13 +42,33 @@ plot_metagenes = function(meta_functions){
   df$Subgroup = factor(df$Subgroup, levels = unique(df$Subgroup))
   df = df[order(df$Odds.Ratio, decreasing = TRUE), ]
   df = df[order(df$Subgroup), ]
-  df$Term = factor(df$Term, levels = unique(df$Term))
+  #df$Term = factor(df$Term, levels = unique(df$Term))
   
+  plist = list()
+  for ( i in unique(df$Subgroup )) {
+    print(paste0("Plotting-----",i))
+    sdf = df[df$Subgroup == i, ]
+   # sdf$Term = droplevels(sdf$Term)
+    sdf = sdf[order(sdf$metagene), ]
+    sdf$Term = factor(sdf$Term, levels = unique(sdf$Term))
+    g1 = ggplot(sdf, aes(x = Odds.Ratio, y= Term, fill = metagene )) +
+      geom_bar(stat = "identity") +
+      theme_bw() +
+      th + 
+      facet_wrap( ~Subgroup ) +
+      ggtitle(i)
+    ggsave(g1, device="pdf", filename = paste0(plot_dir, i,".pdf") , width=10, height=8)
+    plist[[i]] = g1
+  }
+  ## Plot All (Subgroup level)
+  df$Term = factor(df$Term, levels = unique(df$Term))
   g1 = ggplot(df, aes(x = Odds.Ratio, y= Term, fill = Subgroup )) +
     geom_bar(stat = "identity") +
     theme_bw() +
-    th +
-    ggtitle("Metagene enrichment (all p-values < 0.05)")
+    th + 
+    ggtitle(i)
+  ggsave(g1, device="pdf", filename = paste0(plot_dir, "All_Subgroups",".pdf") , width=16, height=12)
+  
   return(g1)
 }
 
