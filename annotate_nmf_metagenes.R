@@ -36,6 +36,7 @@ return(meta_functions)
 plot_metagenes = function(meta_functions, plot_dir="./Figures/"){
   dir.create(plot_dir, showWarnings = FALSE)
  library(ggplot2)
+  library(dplyr)
   th <- theme(text = element_text(size=12, family = "Helvetica" ), panel.grid.major = element_blank(), panel.grid.minor = element_blank() )
   df  = meta_functions
   df$Term = stringr::str_trim(stringr::str_remove(df$Term, "\\(GO:[0-9]+\\)"))
@@ -50,6 +51,9 @@ plot_metagenes = function(meta_functions, plot_dir="./Figures/"){
     sdf = df[df$Subgroup == i, ]
    # sdf$Term = droplevels(sdf$Term)
     sdf = sdf[order(sdf$metagene), ]
+    sdf = sdf %>% 
+      group_by(metagene) %>% 
+      top_n(n = 12, wt = Odds.Ratio) %>% ungroup()
     sdf$Term = factor(sdf$Term, levels = unique(sdf$Term))
     g1 = ggplot(sdf, aes(x = Odds.Ratio, y= Term, fill = metagene )) +
       geom_bar(stat = "identity") +
