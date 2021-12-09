@@ -86,7 +86,11 @@ NMF_consensus = function(seurat_obj, meta_list, cell_samples, cell_subgroups){
         final[new_name] = consensus_programs[[subgroup]][gs]
       }
   }
-  
+  ## test consensus gene sets dont contain duplicate genes
+  for (gs in final){
+    stopifnot( sum(duplicated(gs)) == 0  ) 
+    
+  }
   return(final)
 }
 
@@ -111,7 +115,7 @@ merge_clusters = function(meta_list, GO, consensus_assignments, topn=30){
     stopifnot(samples > 0)
     
     components = consensus_assignments$samp_nmf_comps[consensus_assignments$cluster == i ]
-    merged_metagene = unlist(GO[names(GO) %in% components])
+    merged_metagene = unique(unlist(GO[names(GO) %in% components]))
     gene_weight_list = lapply(meta_list[names(meta_list) %in% samples], "[[", 2)
     gene_weight_list = rename_columns(gene_weight_list)
     
