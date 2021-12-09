@@ -23,7 +23,7 @@ NMF_samples = function(seurat_obj, genes, cell_samples, nrun=2, k=4) {
     #  ptm <- proc.time()
     res <- nmf(datExpr, rank = k, nrun = nrun, seed=123456 )
     #  proc.time() - ptm
-    metagenes = extractFeatures(res )
+    metagenes = extractFeatures(res, 30L)
     for (j in 1:length(metagenes)){
         metagenes[[j]] = rownames(datExpr)[metagenes[[j]]]
         
@@ -69,7 +69,7 @@ NMF_consensus = function(seurat_obj, meta_list, cell_samples, cell_subgroups){
     }
 # Score cells within each subgroup for metagenes --------------------------
     df = as.matrix(seurat_obj@assays$RNA@data[ ,cell_subgroups == i ]  )
-    ssGSEA = gsva(df, gset.idx.list = GO, method="plage", min.sz=8, max.sz=300)
+    ssGSEA = gsva(df, gset.idx.list = GO, method="ssgsea", min.sz=8, max.sz=300, ssgsea.norm = FALSE)
     ## How to merge?!? could do dynamic tree cut or just cor based
     hords = hclust(as.dist(1-cor(t(ssGSEA), method = "spearman")), method = "ward.D2")
     clusts = dynamicTreeCut::cutreeDynamicTree(hords, minModuleSize = 2)
