@@ -73,4 +73,4 @@ plot_metagenes = function(meta_functions, plot_dir="./Figures/"){
 }
 
 
-plot_metagenes(meta_functions)
+#plot_metagenes(meta_functions)
