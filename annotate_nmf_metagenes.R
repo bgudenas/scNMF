@@ -69,8 +69,7 @@ plot_metagenes = function(meta_functions, plot_dir="./Figures/"){
   g1 = ggplot(df, aes(x = Odds.Ratio, y= Term, fill = Subgroup )) +
     geom_bar(stat = "identity") +
     theme_bw() +
-    th + 
-    ggtitle(i)
+    th
   ggsave(g1, device="pdf", filename = paste0(plot_dir, "All_Subgroups",".pdf") , width=16, height=12)
   
   return(g1)
