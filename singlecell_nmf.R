@@ -23,7 +23,7 @@ NMF_samples = function(seurat_obj, genes, cell_samples, nrun=2, k=4) {
     #  ptm <- proc.time()
     res <- nmf(datExpr, rank = k, nrun = nrun, seed=123456 )
     #  proc.time() - ptm
-    metagenes = extractFeatures(res, 30L)
+    metagenes = extractFeatures(res)
     for (j in 1:length(metagenes)){
         metagenes[[j]] = rownames(datExpr)[metagenes[[j]]]
         
@@ -42,7 +42,7 @@ return(meta_list)
 
 # Define consensus metagenes ----------------------------------------------
 
-NMF_consensus = function(seurat_obj, meta_list, cell_samples, cell_subgroups){
+NMF_consensus = function(seurat_obj, meta_list, cell_samples, cell_subgroups, topn=30){
   library(GSVA)
   # @seurat_obj processed seurat object
   # @meta_list list of sample NMF programs - output from NMF_samples
@@ -69,14 +69,14 @@ NMF_consensus = function(seurat_obj, meta_list, cell_samples, cell_subgroups){
     }
 # Score cells within each subgroup for metagenes --------------------------
     df = as.matrix(seurat_obj@assays$RNA@data[ ,cell_subgroups == i ]  )
-    ssGSEA = gsva(df, gset.idx.list = GO, method="ssgsea", min.sz=8, max.sz=300, ssgsea.norm = FALSE)
+    ssGSEA = gsva(df, gset.idx.list = GO, method="plage", min.sz=8, max.sz=300, ssgsea.norm = FALSE)
     ## How to merge?!? could do dynamic tree cut or just cor based
     hords = hclust(as.dist(1-cor(t(ssGSEA), method = "spearman")), method = "ward.D2")
     clusts = dynamicTreeCut::cutreeDynamicTree(hords, minModuleSize = 2)
     consensus_assignments = cbind(hords$labels, clusts) ## matrix 1/ 2 cols (samp_nmf_comps, cluster assignments)
     colnames(consensus_assignments) = c("samp_nmf_comps", "cluster")
     consensus_assignments = as.data.frame(consensus_assignments)
-    final_metagenes = merge_clusters(meta_list, GO, consensus_assignments, topn=30)
+    final_metagenes = merge_clusters(meta_list, GO, consensus_assignments, topn=topn)
     consensus_programs[[i]] = final_metagenes
   }
   final = c()
@@ -107,7 +107,7 @@ rename_columns = function(gene_weight_list){
 
 # Merge sample NMF components into consensus subgroup metagenes -----------
 
-merge_clusters = function(meta_list, GO, consensus_assignments, topn=30){
+merge_clusters = function(meta_list, GO, consensus_assignments, topn=50){
   ## merge clusters
   final_metagenes = c()
   for (i in unique(consensus_assignments$cluster)){
