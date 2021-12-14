@@ -14,10 +14,12 @@ library(enrichR)
 library(ggplot2)
 ```
 
-#### Important parameters
-nrun = int # how many iterations to run NMF per sample (set to 2 for testing but ~200 for accuracte results)
-k = int # how many metagenes to identify -- through metagene merging can be more or less than this at subgroup level
-topn = int # how many genes should be selected to characterize the metagenes, i.e. 30 or 50...
+#### parameter defaults
+```R
+nrun = 2 # how many iterations to run NMF per sample (set to 2 for fast testing but ~200 for accurate results)
+k = 3 # how many metagenes to identify -- through metagene merging can be more or less than this at subgroup level
+topn = 30 # how many genes should be selected to characterize the metagenes, i.e. 30 or 50...
+```
 
 #### Running scNMF
 ```R
