@@ -6,6 +6,7 @@ NMF analysis is run for all cells within a given sample to identify intra-tumora
 
 #### Dependecies
  ```R
+ #R/4.0.2
 library(NMF)
 library(GSVA)
 library(stringr)
