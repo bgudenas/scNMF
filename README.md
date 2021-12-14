@@ -16,6 +16,7 @@ library(ggplot2)
 
 #### parameter defaults
 ```R
+genes = rownames(seurat_obj) ## only analyze the provided gene list (could be genes in MsigDB or passing an expression filter)
 nrun = 2 # how many iterations to run NMF per sample (set to 2 for fast testing but ~200 for accurate results)
 k = 3 # how many metagenes to identify -- through metagene merging can be more or less than this at subgroup level
 topn = 30 # how many genes should be selected to characterize the metagenes, i.e. 30 or 50...
