@@ -11,21 +11,23 @@ source("~/src/scNMF/annotate_nmf_metagenes.R")
 
 ss2 = readRDS("../Data/snPB_ss2_TPM_so.rds") ## seurat object
 
+## create genelist to run NMF on (only protein-coding)
 map = readRDS("~/Annots/Annotables/hg38.rds")
 map = map[map$gene_biotype == "protein_coding", ]
-#genes = genes[genes %in% map$external_gene_name]
 genes = map$external_gene_name
 genes = genes[genes %in% rownames(ss2)]
 
 cell_samples = ss2$Sample
 cell_subgroups =  ss2$Subgroup ## defines subset of cells NMF is run on
 
+## create dir for all results
 data_dir = "../NMF/Raw_Scaled_TPM_r6/"
 dir.create(data_dir)
 ```
 
 ## intialize rank (k) (can finetune after rank estimation)
 ```
+## each intry in cell_subgroups gets own rank
 comps = c("PB-MYC/FOXR2" = 6,
           "PPTID" = 6,
           "PB-miRNA1" = 6,
