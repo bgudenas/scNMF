@@ -3,7 +3,40 @@ NMF analysis in tumor single-cell data (R scripts)
 Data Input: Seurat Object
 
 
+### Load data
+```
+library(Seurat)
+source("~/src/scNMF/singlecell_nmf.R")
+source("~/src/scNMF/annotate_nmf_metagenes.R")
 
+ss2 = readRDS("../Data/snPB_ss2_TPM_so.rds") ## seurat object
+
+map = readRDS("~/Annots/Annotables/hg38.rds")
+map = map[map$gene_biotype == "protein_coding", ]
+#genes = genes[genes %in% map$external_gene_name]
+genes = map$external_gene_name
+genes = genes[genes %in% rownames(ss2)]
+
+cell_samples = ss2$Sample
+cell_subgroups =  ss2$Subgroup ## defines subset of cells NMF is run on
+
+data_dir = "../NMF/Raw_Scaled_TPM_r6/"
+dir.create(data_dir)
+```
+
+## intialize rank (k) (can finetune after rank estimation)
+```
+comps = c("PB-MYC/FOXR2" = 6,
+          "PPTID" = 6,
+          "PB-miRNA1" = 6,
+          "PB-RB" = 6,
+          "PC" = 6,
+          "PB-miRNA2" = 6,
+          "PAT" = 6,
+          "PTPR" = 6)
+```
+
+## Loop through cell_subgroups and run NMF on each subset
 ```
 all_metas = list()
 
@@ -19,12 +52,13 @@ datExpr = nmf_preprocess(seurat_obj = mini,
                counts_slot = "scale.data",
                n_cells = min_cells)
 
-#estim_rank = nmf_rank(datExpr,
-#         data_dir = data_dir,
-#         data_prefix = i,
-#         k_range = 2:12,
-#         n_run = 15,
-#         cell_labels = mini$Sample)
+## creates scatterplot for rank estimation
+estim_rank = nmf_rank(datExpr,
+         data_dir = data_dir,
+         data_prefix = i,
+         k_range = 2:12,
+         n_run = 15,
+         cell_labels = mini$Sample)
 
 print(paste0("K-value = ", k_val))
 res = nmf_run(datExpr,
@@ -32,7 +66,8 @@ res = nmf_run(datExpr,
           data_prefix = i,
           k = k_val,
           n_run = 150)
- 
+
+## creates NMF metagenes
 meta_list = nmf_features(nmf_res = res,
             datExpr = datExpr,
             data_dir = data_dir,
@@ -46,6 +81,9 @@ names(metagenes) = paste0(i,"-", toupper(letters[1:length(metagenes)]))
 
 ## collect all metagenes
 all_metas = c(all_metas, metagenes)
+
+
+### functionally annotate metagenes
 
 dir.create( paste0(data_dir, "GS/"), showWarnings = FALSE)
 meta_functions = annotate_metagenes(metagenes, bp_db="GO_Biological_Process_2021")
