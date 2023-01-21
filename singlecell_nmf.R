@@ -13,13 +13,19 @@ nmf_preprocess = function(seurat_obj,
     datExpr = as.matrix(seurat_obj@assays$RNA@counts )
     datExpr = datExpr[genes, ]
     #var_filt = matrixStats::rowVars(datExpr) > quantile(matrixStats::rowVars(datExpr), 0.10) ## remove bottom 10% of low variable genes
-    var_filt = rowSums(datExpr >= 1) >= n_cells ## expressed in at least n_cells
+    var_filt = rowSums(datExpr > 0) >= n_cells ## expressed in at least n_cells
     genes = genes[genes %in% (rownames(datExpr)[var_filt]) ]
     
     if (counts_slot == "scale.data"){
       message("Scaled counts ---------")
+      if ( sum(seurat_obj@assays$RNA@counts[ ,1]) > 800000 ){
+        print("TPM detected ----")
+        seurat_obj = ScaleData(seurat_obj, features = rownames(seurat_obj), verbose = FALSE )
+      } else {
+        "Counts detected ----"
       seurat_obj <- NormalizeData(seurat_obj, normalization.method = "LogNormalize", scale.factor = 10000, verbose = FALSE)
-      seurat_obj = ScaleData(seurat_obj, features = rownames(seurat_obj), verbose = FALSE )
+      seurat_obj = ScaleData(seurat_obj, features = rownames(seurat_obj), verbose = FALSE, vars.to.regress = "nCount_RNA")
+      }
       datExpr = as.matrix(seurat_obj@assays$RNA@scale.data )
       #datExpr = datExpr + abs(min(datExpr)) ## add pseudocount to avoid negative values for scaled data
       datExpr[datExpr < 0 ] = 0
@@ -58,6 +64,7 @@ nmf_rank = function(datExpr,
                     k_range = 2:8,
                     n_run = 30,
                     cell_labels = NULL) {
+  ## how to select optimal (k), where cophenetic starts decreasing or RSS inflection
   library(NMF)
   stopifnot(!is.null(data_dir)) # specifcy outputs
   stopifnot(!is.null(data_prefix)) # specifcy output prefix
@@ -97,6 +104,8 @@ nmf_run = function(datExpr,
                    n_run = 100) {
   library(NMF)
   
+  out_file = file.path(data_dir, paste0(data_prefix, "_NMF_result.rds"))
+  if (!file.exists(out_file)){
   message("STARTING NMF ---------")
   res <- nmf(datExpr,
              rank = k,
@@ -104,7 +113,11 @@ nmf_run = function(datExpr,
              .opt='vp8',
              seed=123456 )
   message("NMF FINISHED ---------")
-  saveRDS(res, file.path(data_dir, paste0(data_prefix, "_NMF_result.rds")))
+  saveRDS(res, out_file)
+  } else {
+    message("LOADING NMF ---------")
+   res = readRDS(out_file)
+  }
   return(res)
 }
 
@@ -115,29 +128,36 @@ nmf_features = function(nmf_res,
                         data_dir = NULL,
                         data_prefix = NULL,
                         feature_method = NULL,
-                        topn = 30){
+                        topn = 30,
+                        MT_filt = FALSE){
   library(NMF)
   meta_list = list()
   metagenes = extractFeatures(nmf_res, topn)
+  message(paste0("Features (Topn) =", topn))
   if (!is.null(feature_method)){
     print(paste0("FEATURE EXTRACTION =", feature_method))
     metagenes = extractFeatures(nmf_res, method = feature_method)
   } else {
-    metagenes = extractFeatures(res, topn)
+    metagenes = extractFeatures(nmf_res, 200) ## arbitrarily large num
   }
   for (j in 1:length(metagenes)){
-    metagenes[[j]] = rownames(datExpr)[metagenes[[j]]]
+    metagene_list =  rownames(datExpr)[metagenes[[j]]]
+    if (MT_filt == TRUE){
+      metagene_list = metagene_list[!grepl("^MT-", metagene_list)]
+      metagene_list = metagene_list[!grepl("^MRP", metagene_list)]
+      metagene_list = metagene_list[!grepl("^RPS", metagene_list)]
+      metagene_list = metagene_list[!grepl("^RPL", metagene_list)]
+      metagene_list = metagene_list[1:topn]
+    }
+    metagene_list = metagene_list[1:topn]
+    metagenes[[j]] =metagene_list
   }
   meta_list[[i]]$gene_set = metagenes
   
-  gweights = basis(res)
+  gweights = basis(nmf_res)
   meta_list[[i]]$weights = gweights
   
   saveRDS(meta_list, file.path(data_dir, paste0(data_prefix, "_NMF_metamatrix.rds")))
+return(meta_list)
 } 
   
-  
-
-
-
-    
