@@ -1,50 +1,41 @@
 
 nmf_preprocess = function(seurat_obj,
                           genes,
-                          counts_slot = "scale.data",
-                          n_cells = 50) {
+                          counts_slot = "scale.data") {
   # @seurat_obj processed seurat object
   # @genes eligible gene list for NMF (ie, proteing coding or genes with functional annotations)
   stopifnot(sum(genes %in% rownames(seurat_obj)) > 1000) ## at least 1k genes remain after filter
     
-    #seurat_obj = ScaleData(seurat_obj, features = rownames(seurat_obj), verbose = FALSE, vars.to.regress = "nCount_RNA")
-    # print("regress nCount")
-    
-    datExpr = as.matrix(seurat_obj@assays$RNA@counts )
-    datExpr = datExpr[genes, ]
-    #var_filt = matrixStats::rowVars(datExpr) > quantile(matrixStats::rowVars(datExpr), 0.10) ## remove bottom 10% of low variable genes
-    var_filt = rowSums(datExpr > 0) >= n_cells ## expressed in at least n_cells
-    genes = genes[genes %in% (rownames(datExpr)[var_filt]) ]
-    
     if (counts_slot == "scale.data"){
-      message("Scaled counts ---------")
+      message("Scaled Data ---------")
       if ( sum(seurat_obj@assays$RNA@counts[ ,1]) > 800000 ){
         print("TPM detected ----")
-        seurat_obj = ScaleData(seurat_obj, features = rownames(seurat_obj), verbose = FALSE )
+        datExpr = t(scale(t(as.matrix(seurat_obj@assays$RNA@data[genes, ])))) ## scale norm data
       } else {
         "Counts detected ----"
       seurat_obj <- NormalizeData(seurat_obj, normalization.method = "LogNormalize", scale.factor = 10000, verbose = FALSE)
-      seurat_obj = ScaleData(seurat_obj, features = rownames(seurat_obj), verbose = FALSE, vars.to.regress = "nCount_RNA")
+      datExpr = t(scale(t(as.matrix(seurat_obj@assays$RNA@data[genes, ])))) ## scale norm data
       }
-      datExpr = as.matrix(seurat_obj@assays$RNA@scale.data )
-      #datExpr = datExpr + abs(min(datExpr)) ## add pseudocount to avoid negative values for scaled data
       datExpr[datExpr < 0 ] = 0
       print("no less than 0")
+      message("Expression Quantile ---")
       print(quantile(datExpr))
-      datExpr = datExpr[rownames(datExpr) %in% genes, ]
+      message("Expression Dim ---")
       print(dim(datExpr))
     } else if  (counts_slot == "data"){
       message("Normalized counts ---------")
       seurat_obj <- NormalizeData(seurat_obj, normalization.method = "LogNormalize", scale.factor = 10000, verbose = FALSE)
-      datExpr = as.matrix(seurat_obj@assays$RNA@data )
-      datExpr = datExpr[rownames(datExpr) %in% genes, ]
+      datExpr = as.matrix(seurat_obj@assays$RNA@data[genes, ] )
+      message("Expression Quantile ---")
       print(quantile(datExpr))
+      message("Expression Dim ---")
       print(dim(datExpr))
     } else if  (counts_slot == "counts"){
       message("Raw counts ---------")
-      datExpr = as.matrix(seurat_obj@assays$RNA@counts )
-      datExpr = datExpr[rownames(datExpr) %in% genes, ]
+      datExpr = as.matrix(seurat_obj@assays$RNA@counts[genes, ] )
+      message("Expression Quantile ---")
       print(quantile(datExpr))
+      message("Expression Dim ---")
       print(dim(datExpr))
     }
 
@@ -63,7 +54,8 @@ nmf_rank = function(datExpr,
                     data_prefix = NULL,
                     k_range = 2:8,
                     n_run = 30,
-                    cell_labels = NULL) {
+                    cell_labels = NULL,
+                    plot_ranks = FALSE) {
   ## how to select optimal (k), where cophenetic starts decreasing or RSS inflection
   library(NMF)
   stopifnot(!is.null(data_dir)) # specifcy outputs
@@ -72,14 +64,15 @@ nmf_rank = function(datExpr,
   
   out_ranks = file.path(data_dir, paste0(data_prefix, "_NMF_ranks.rds"))
   if (!file.exists(out_ranks)){
-    message("Computing NMF rnaks -----")
-    estim.r <- nmf(datExpr, k_range, nrun=n_run, .opt='vp8', seed=123456)
+    message("Computing NMF Ranks -----")
+    estim.r <- nmf(datExpr, k_range, nrun=n_run, .opt='vp8', seed=123456, method = "snmf/r")
     saveRDS(estim.r, out_ranks)
   } else {
     message("Reading in saved results -----")
     estim.r = readRDS(out_ranks)
   }
   
+  if (plot_ranks == TRUE ){
   if(requireNamespace("Biobase", quietly=TRUE)){
     
   pdf(file.path(data_dir, paste0(data_prefix, "_NMF_ranks_scatterplot.pdf")), width = 14, height = 14, pointsize = 10)
@@ -89,6 +82,7 @@ nmf_rank = function(datExpr,
   pdf(file.path(data_dir, paste0(data_prefix, "_NMF_ranks_heatmap.pdf")), width = 8, height = 10)
     consensusmap(estim.r, annCol=cell_labels, labCol=NA, labRow=NA)
     dev.off()
+    }
   }
   
   return(estim.r)
@@ -111,7 +105,8 @@ nmf_run = function(datExpr,
              rank = k,
              nrun = n_run,
              .opt='vp8',
-             seed=123456 )
+             seed=123456,
+             method = "snmf/r")
   message("NMF FINISHED ---------")
   saveRDS(res, out_file)
   } else {
